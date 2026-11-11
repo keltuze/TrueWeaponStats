@@ -1,0 +1,5 @@
+{
+  "plugins": {
+    "trueweaponstats_refit_script": "trueweaponstats.campaign.TrueWeaponStatsRefitListener"
+  }
+}
