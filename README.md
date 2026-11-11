@@ -3,7 +3,7 @@
 [![Game Version](https://img.shields.io/badge/Starsector-0.98a--RC8-blue.svg)](https://fractalsoftworks.com/)
 [![Java Compatibility](https://img.shields.io/badge/Java-17-green.svg)]()
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![Latest Release](https://img.shields.io/badge/Release-v1.0.0-brightgreen.svg)](https://github.com/keltuze/TrueWeaponStats/releases/tag/v1.0.0)
+[![Latest Release](https://img.shields.io/badge/Release-v1.0.1-brightgreen.svg)](https://github.com/keltuze/TrueWeaponStats/releases/tag/v1.0.1)
 
 > **Real-time effective combat metrics inside the Refit screen!**  
 > In vanilla Starsector, weapon tooltips always display default "factory" stats, ignoring active officer skills, rangefinder hullmods, and ship systems. **True Weapon Stats** dynamically calculates and displays actual combat performance (effective range, damage, burst & sustained DPS, flux/sec, and ammo recharge) directly in the UI.  
@@ -12,15 +12,25 @@
 
 ---
 
-## 📦 Downloads (v1.0.0 Release)
+## 📦 Downloads (v1.0.1 Release)
 
 Direct download links for the latest stable release:
 
 | Package | Compatibility | Highlights & Features | Direct Download |
 | :--- | :---: | :--- | :--- |
-| **True Weapon Stats v1.0.0** | Starsector 0.98a-RC8 | Full release: Live built-in weapon resolution, reactive `[ALT]` toggle, bytecode multilingual support | [**`TrueWeaponStats_v1.0.0.zip`**](https://github.com/keltuze/TrueWeaponStats/releases/download/v1.0.0/TrueWeaponStats_v1.0.0.zip) |
+| **True Weapon Stats v1.0.1** | Starsector 0.98a-RC8 | Bugfix patch: Fixed candidate weapon resolution in picker, dynamic slot injection for fake weapons, clean English/multilingual dictionary, eliminated heartbeat logs | [**`TrueWeaponStats_v1.0.1.zip`**](https://github.com/keltuze/TrueWeaponStats/releases/download/v1.0.1/TrueWeaponStats_v1.0.1.zip) |
 
 > 🔗 All release assets and past versions are available on the [**GitHub Releases Page**](https://github.com/keltuze/TrueWeaponStats/releases).
+
+---
+
+## 📝 Changelog v1.0.1:
+* **Fixed Weapon Picker Candidate Resolution:** When browsing candidate weapons to install in an occupied slot, tooltips now correctly calculate stats for the hovered candidate rather than inheriting numbers from the currently mounted weapon.
+* **Dynamic Slot Assignment for Synthesized Weapons:** Implemented runtime type-based reflection to assign `WeaponSlotAPI` to synthesized weapons, enabling vanilla range listener modifiers (such as *Ballistic Rangefinder*) to correctly calculate ranges.
+* **Multi-Language Detection Overhaul:** Replaced fragile byte-offset scanning with a comprehensive, order-prioritized dictionary (English, Russian, Chinese, German, Spanish, French). Correctly distinguishes "Flux / damage" (where lower is green/buff), "Reload size", and "Charges gained".
+* **Lazy ClassLoader Locale Initialization:** Automatically initializes localized metric tables inside whichever ClassLoader executes the UI hooks.
+* **Eliminated Background Logging Spam:** Completely removed per-second heartbeat and diagnostic dump logs on the campaign map.
+* **Combat / Simulation ClassLoader Escalation:** Added automatic privileged loader escalation to title-screen missions and combat simulations.
 
 ---
 

@@ -117,6 +117,11 @@ public class TooltipPatcher {
             case AMMO_OR_CHARGES -> {
                 result = buildAmmoMetric(vanillaText, spec, engine);
             }
+            case RELOAD_SIZE -> {
+                float orig = spec.getReloadSize();
+                float mod = engine.getReloadSize();
+                result = buildSingleMetric(orig, mod, false, true);
+            }
             case RELOAD_TIME -> {
                 float orig = spec.getAmmoPerSecond() <= 0f ? 0f : spec.getReloadSize() / spec.getAmmoPerSecond();
                 float mod = engine.getReloadDuration();

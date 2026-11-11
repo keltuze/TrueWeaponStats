@@ -75,31 +75,73 @@ public class WeaponStatsEngine {
         }
     }
 
+    private static final java.util.Map<Class<?>, java.lang.reflect.Field> WEAPON_SLOT_FIELDS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void assignSlotToWeapon(WeaponAPI weapon, WeaponSlotAPI slot) {
+        if (weapon == null || slot == null) return;
+        try {
+            java.lang.reflect.Field slotField = WEAPON_SLOT_FIELDS.get(weapon.getClass());
+            if (slotField == null) {
+                Class<?> cur = weapon.getClass();
+                while (cur != null && cur != Object.class) {
+                    for (java.lang.reflect.Field f : cur.getDeclaredFields()) {
+                        if (WeaponSlotAPI.class.isAssignableFrom(f.getType())) {
+                            f.setAccessible(true);
+                            slotField = f;
+                            WEAPON_SLOT_FIELDS.put(weapon.getClass(), slotField);
+                            break;
+                        }
+                    }
+                    if (slotField != null) break;
+                    cur = cur.getSuperclass();
+                }
+            }
+            if (slotField != null) {
+                WeaponSlotAPI clonedSlot = null;
+                try {
+                    clonedSlot = (WeaponSlotAPI) ReflectionHelper.invokeMethod(slot, "clone");
+                } catch (Throwable ignored) {}
+                slotField.set(weapon, clonedSlot != null ? clonedSlot : slot);
+            }
+        } catch (Throwable ignored) {}
+    }
+
     public static WeaponAPI resolveWeaponInstance(ShipAPI ship, WeaponSpecAPI spec, WeaponSlotAPI slot) {
-        if (ship != null) {
+        if (ship != null && spec != null) {
+            String targetWeaponId = spec.getWeaponId();
+
+            // 1. If slot is specified, only return the mounted weapon if it actually matches this spec!
             if (slot != null && slot.getId() != null) {
                 String slotId = slot.getId();
                 for (WeaponAPI mounted : ship.getAllWeapons()) {
                     if (mounted.getSlot() != null && slotId.equals(mounted.getSlot().getId())) {
-                        return mounted;
+                        if (mounted.getSpec() != null && targetWeaponId.equals(mounted.getSpec().getWeaponId())) {
+                            return mounted; // Genuine mounted live weapon
+                        }
+                        // Mounted weapon in slot is DIFFERENT (e.g. user is browsing candidate weapons in picker)
+                        break;
                     }
                 }
-            }
-            if (spec != null) {
+            } else {
+                // 2. Slot is unspecified: match any mounted weapon on ship with matching spec
                 for (WeaponAPI mounted : ship.getAllWeapons()) {
-                    if (mounted.getSpec() != null && spec.getWeaponId().equals(mounted.getSpec().getWeaponId())) {
+                    if (mounted.getSpec() != null && targetWeaponId.equals(mounted.getSpec().getWeaponId())) {
                         return mounted;
                     }
                 }
             }
         }
+
+        // 3. Fallback: synthesize a fake weapon for this spec and slot
         var ce = Global.getCombatEngine();
         if (ce != null && spec != null) {
-            WeaponAPI fake = ce.createFakeWeapon(ship, spec.getWeaponId());
-            if (fake != null && slot != null) {
-                ReflectionHelper.setField(fake, "slot", slot);
-            }
-            return fake;
+            try {
+                WeaponAPI fake = ce.createFakeWeapon(ship, spec.getWeaponId());
+                if (fake != null && slot != null) {
+                    assignSlotToWeapon(fake, slot);
+                }
+                return fake;
+            } catch (Throwable ignored) {}
         }
         return null;
     }
@@ -244,11 +286,14 @@ public class WeaponStatsEngine {
     }
 
     public int getEffectiveAmmo() {
+        if (weapon != null) {
+            return (int) weapon.getMaxAmmo();
+        }
         if (spec == null) return 0;
         if (ship == null || ship.getMutableStats() == null) return spec.getMaxAmmo();
         MutableShipStatsAPI stats = ship.getMutableStats();
         int base = spec.getMaxAmmo();
-        WeaponAPI.WeaponType type = weapon != null ? weapon.getType() : spec.getType();
+        WeaponAPI.WeaponType type = spec.getType();
         float effective = switch (type) {
             case BALLISTIC -> stats.getBallisticAmmoBonus().computeEffective(base);
             case ENERGY -> stats.getEnergyAmmoBonus().computeEffective(base);
@@ -258,11 +303,18 @@ public class WeaponStatsEngine {
         return Math.round(effective);
     }
 
+    public float getReloadSize() {
+        if (weapon != null && weapon.getAmmoTracker() != null) {
+            return weapon.getAmmoTracker().getReloadSize();
+        }
+        return spec != null ? spec.getReloadSize() : 0f;
+    }
+
     public float getReloadDuration() {
         if (spec == null) return 0f;
         float regenRate = getAmmoRegenMultiplier();
         if (spec.getAmmoPerSecond() <= 0f || regenRate <= 0f) return 0f;
-        return spec.getReloadSize() / (spec.getAmmoPerSecond() * regenRate);
+        return getReloadSize() / (spec.getAmmoPerSecond() * regenRate);
     }
 
     public float getRefireCooldown(float baseDelay) {

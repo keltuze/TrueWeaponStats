@@ -208,6 +208,8 @@ public class RefitUIInspector {
 
     public void update(UIPanelAPI screenPanel, UIPanelAPI core, UIPanelAPI dialogParent, Object refitPanelTarget) {
         try {
+            LocaleInspector.get().initialize();
+
             boolean altDown = isAltDown();
             boolean altChanged = (altDown != lastAltDown);
             lastAltDown = altDown;

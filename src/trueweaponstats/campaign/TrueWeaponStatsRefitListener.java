@@ -7,6 +7,7 @@ import com.fs.starfarer.api.campaign.CoreUITabId;
 import com.fs.starfarer.api.campaign.listeners.CoreUITabListener;
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin;
 import com.fs.starfarer.api.combat.CombatEngineAPI;
+import com.fs.starfarer.api.combat.EveryFrameCombatPlugin;
 import com.fs.starfarer.api.input.InputEventAPI;
 import com.fs.starfarer.api.ui.UIPanelAPI;
 import com.fs.starfarer.title.TitleScreenState;
@@ -50,7 +51,6 @@ public class TrueWeaponStatsRefitListener extends BaseEveryFrameCombatPlugin imp
         return true;
     }
 
-    private int tickCount = 0;
 
     @Override
     public void advance(float amount) {
@@ -77,32 +77,25 @@ public class TrueWeaponStatsRefitListener extends BaseEveryFrameCombatPlugin imp
         }
 
         try {
-            tickCount++;
-            boolean heartbeat = (tickCount % 60 == 1);
-
-            if (tickCount == 5 || tickCount == 120 || (tickCount % 600 == 1)) {
-                ReflectionHelper.dumpDiagnostics();
-            }
-
             UIPanelAPI screenPanel = ReflectionHelper.getScreenPanel();
             UIPanelAPI core = ReflectionHelper.getCoreUI();
             UIPanelAPI dialogParent = ReflectionHelper.getDialogParent();
 
+            // Quick check: if no UI panels exist, player is just flying in space, skip search
+            if (screenPanel == null && core == null && dialogParent == null) {
+                if (wasInRefit) {
+                    wasInRefit = false;
+                    inspector.reset();
+                }
+                return;
+            }
+
             // Locate active refit panel across all known entry points (Fleet [F], Refit [R], station dialog, etc.)
             Object refitPanel = findActiveRefitPanel(screenPanel, core, dialogParent);
-
-            if (heartbeat) {
-                log.info(String.format("[TrueWeaponStats] Heartbeat #%d: screenPanel=%s, core=%s, refitPanel=%s",
-                        tickCount,
-                        screenPanel != null ? screenPanel.getClass().getSimpleName() : "null",
-                        core != null ? core.getClass().getSimpleName() : "null",
-                        refitPanel != null ? refitPanel.getClass().getSimpleName() : "null"));
-            }
 
             if (refitPanel == null) {
                 if (wasInRefit) {
                     wasInRefit = false;
-                    log.info("[TrueWeaponStats] Exited refit screen.");
                     inspector.reset();
                 }
                 return;
@@ -110,7 +103,6 @@ public class TrueWeaponStatsRefitListener extends BaseEveryFrameCombatPlugin imp
 
             if (!wasInRefit) {
                 wasInRefit = true;
-                log.info("[TrueWeaponStats] Active refit panel detected: " + refitPanel.getClass().getName());
             }
 
             inspector.update(screenPanel, core != null ? core : screenPanel, dialogParent, refitPanel);
@@ -240,6 +232,20 @@ public class TrueWeaponStatsRefitListener extends BaseEveryFrameCombatPlugin imp
 
     @Override
     public void init(CombatEngineAPI engine) {
+        boolean isPrivileged = getClass().getClassLoader().getClass().getName().contains("TWSPrivilegedClassLoader");
+        if (!isPrivileged && engine != null) {
+            try {
+                Class<?> cls = trueweaponstats.TrueWeaponStatsPlugin.getPrivilegedClassLoader()
+                        .loadClass("trueweaponstats.campaign.TrueWeaponStatsRefitListener");
+                MethodHandles.Lookup lookup = MethodHandles.lookup();
+                MethodHandle mh = lookup.findConstructor(cls, MethodType.methodType(void.class));
+                EveryFrameCombatPlugin privileged = (EveryFrameCombatPlugin) mh.invoke();
+                engine.addPlugin(privileged);
+                engine.removePlugin(this);
+            } catch (Throwable t) {
+                log.error("[TrueWeaponStats] Combat classloader escalation failed: " + t, t);
+            }
+        }
     }
 
     @Override

@@ -1,6 +1,5 @@
 package trueweaponstats.locale;
 
-import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.loading.ProjectileWeaponSpecAPI;
 import com.fs.starfarer.api.loading.WeaponSpecAPI;
 
@@ -21,24 +20,26 @@ public class LocaleInspector {
         return INSTANCE;
     }
 
-    // Extracted localized labels
-    private String labelDamage = "Урон";
-    private String labelDpsSustained = "Урон / сек (продолжительный)";
-    private String labelDpsBurst = "Урон / секунду";
-    private String labelOrdnancePoints = "Очки оснащения";
-    private String labelRange = "Дальность";
-    private String labelFluxSustained = "Нагрузка / сек (продолжительная)";
-    private String labelFluxBurst = "Нагрузка / секунду";
-    private String labelFluxShot = "Нагрузка / выстрел";
-    private String labelFluxDamage = "Нагрузка / урон";
-    private String labelFluxDamageNonEmp = "Нагрузка / урон (не ЭМИ)";
-    private String labelHitpoints = "Прочность";
-    private String labelRefireDelay = "Задержка между очередями";
-    private String labelBurstSize = "Размер очереди";
+    // Extracted localized labels (defaults to vanilla English to ensure 100% precision out-of-the-box)
+    private String labelDamage = "Damage";
+    private String labelDpsSustained = "Damage / sec (sustained)";
+    private String labelDpsBurst = "Damage / second";
+    private String labelOrdnancePoints = "Ordnance points";
+    private String labelRange = "Range";
+    private String labelFluxSustained = "Flux / sec (sustained)";
+    private String labelFluxBurst = "Flux / second";
+    private String labelFluxShot = "Flux / shot";
+    private String labelFluxDamage = "Flux / damage";
+    private String labelFluxDamageNonEmp = "Flux / non-EMP damage";
+    private String labelHitpoints = "Hitpoints";
+    private String labelRefireDelay = "Refire delay";
+    private String labelBurstSize = "Burst size";
+    private String labelReloadSize = "Reload size";
+    private String labelChargesGained = "Charges gained";
 
     // ooOO and OoOo labels
-    private String labelWeaponFluxTotal = "нагр. оружия/сек";
-    private String labelPickerRange = ", дальности ";
+    private String labelWeaponFluxTotal = "weapon flux/sec";
+    private String labelPickerRange = "range ";
 
     private boolean initialized = false;
 
@@ -49,40 +50,36 @@ public class LocaleInspector {
         try {
             extractCargoTooltipStrings();
         } catch (Throwable t) {
-            Global.getLogger(LocaleInspector.class).warn("[TrueWeaponStats] Bytecode string extraction for CargoTooltipFactory encountered notice: " + t.getMessage());
+            // Non-critical: dictionary matching provides full coverage
         }
 
         try {
             extractRefitDisplayStrings();
         } catch (Throwable t) {
-            Global.getLogger(LocaleInspector.class).warn("[TrueWeaponStats] Bytecode string extraction for ooOO encountered notice: " + t.getMessage());
+            // Non-critical
         }
 
         try {
             extractPickerStrings();
         } catch (Throwable t) {
-            Global.getLogger(LocaleInspector.class).warn("[TrueWeaponStats] Bytecode string extraction for OoOo encountered notice: " + t.getMessage());
+            // Non-critical
         }
-
-        Global.getLogger(LocaleInspector.class).info(String.format(
-                "[TrueWeaponStats] Localized UI labels loaded: Damage='%s', Range='%s', OP='%s', DPS='%s', Flux/sec='%s', TotalFlux='%s'",
-                labelDamage, labelRange, labelOrdnancePoints, labelDpsBurst, labelFluxBurst, labelWeaponFluxTotal
-        ));
     }
 
     public enum MetricType {
         ORDNANCE_POINTS,
         RANGE,
+        FLUX_DAMAGE,
         DAMAGE,
         DPS_BURST,
         DPS_SUSTAINED,
         FLUX_BURST,
         FLUX_SUSTAINED,
         FLUX_SHOT,
-        FLUX_DAMAGE,
         HITPOINTS,
         AMMO_OR_CHARGES,
         RELOAD_TIME,
+        RELOAD_SIZE,
         REFIRE_DELAY,
         BURST_SIZE,
         UNKNOWN
@@ -92,64 +89,96 @@ public class LocaleInspector {
      * Determines the metric type for a given grid row name and value text.
      */
     public MetricType identifyMetric(String rowName, String valueText, WeaponSpecAPI spec) {
+        if (!initialized) {
+            initialize();
+        }
         if (rowName == null) return MetricType.UNKNOWN;
         String cleanName = rowName.trim();
         String lower = cleanName.toLowerCase(Locale.ROOT);
 
         // 1. Exact match with detected runtime labels
-        if (cleanName.equalsIgnoreCase(labelOrdnancePoints)) return MetricType.ORDNANCE_POINTS;
-        if (cleanName.equalsIgnoreCase(labelRange)) return MetricType.RANGE;
-        if (cleanName.equalsIgnoreCase(labelDamage)) return MetricType.DAMAGE;
-        if (cleanName.equalsIgnoreCase(labelDpsBurst)) return MetricType.DPS_BURST;
-        if (cleanName.equalsIgnoreCase(labelDpsSustained)) return MetricType.DPS_SUSTAINED;
-        if (cleanName.equalsIgnoreCase(labelFluxBurst)) return MetricType.FLUX_BURST;
-        if (cleanName.equalsIgnoreCase(labelFluxSustained)) return MetricType.FLUX_SUSTAINED;
-        if (cleanName.equalsIgnoreCase(labelFluxShot)) return MetricType.FLUX_SHOT;
-        if (cleanName.equalsIgnoreCase(labelFluxDamage) || cleanName.equalsIgnoreCase(labelFluxDamageNonEmp)) return MetricType.FLUX_DAMAGE;
-        if (cleanName.equalsIgnoreCase(labelHitpoints)) return MetricType.HITPOINTS;
-        if (cleanName.equalsIgnoreCase(labelRefireDelay)) return MetricType.REFIRE_DELAY;
-        if (cleanName.equalsIgnoreCase(labelBurstSize)) return MetricType.BURST_SIZE;
+        if (cleanName.equalsIgnoreCase(labelOrdnancePoints) || cleanName.equalsIgnoreCase("Очки оснащения")) return MetricType.ORDNANCE_POINTS;
+        if (cleanName.equalsIgnoreCase(labelRange) || cleanName.equalsIgnoreCase("Дальность")) return MetricType.RANGE;
+        if (cleanName.equalsIgnoreCase(labelFluxDamage) || cleanName.equalsIgnoreCase(labelFluxDamageNonEmp)
+                || cleanName.equalsIgnoreCase("Нагрузка / урон") || cleanName.equalsIgnoreCase("Нагрузка / урон (не ЭМИ)")) {
+            return MetricType.FLUX_DAMAGE;
+        }
+        if (cleanName.equalsIgnoreCase(labelDamage) || cleanName.equalsIgnoreCase("Урон")) return MetricType.DAMAGE;
+        if (cleanName.equalsIgnoreCase(labelDpsBurst) || cleanName.equalsIgnoreCase("Урон / секунду")) return MetricType.DPS_BURST;
+        if (cleanName.equalsIgnoreCase(labelDpsSustained) || cleanName.equalsIgnoreCase("Урон / сек (продолжительный)")) return MetricType.DPS_SUSTAINED;
+        if (cleanName.equalsIgnoreCase(labelFluxBurst) || cleanName.equalsIgnoreCase("Нагрузка / секунду")) return MetricType.FLUX_BURST;
+        if (cleanName.equalsIgnoreCase(labelFluxSustained) || cleanName.equalsIgnoreCase("Нагрузка / сек (продолжительная)")) return MetricType.FLUX_SUSTAINED;
+        if (cleanName.equalsIgnoreCase(labelFluxShot) || cleanName.equalsIgnoreCase("Нагрузка / выстрел")) return MetricType.FLUX_SHOT;
+        if (cleanName.equalsIgnoreCase(labelHitpoints) || cleanName.equalsIgnoreCase("Прочность")) return MetricType.HITPOINTS;
+        if (cleanName.equalsIgnoreCase(labelRefireDelay) || cleanName.equalsIgnoreCase("Задержка между очередями")) return MetricType.REFIRE_DELAY;
+        if (cleanName.equalsIgnoreCase(labelBurstSize) || cleanName.equalsIgnoreCase("Размер очереди")) return MetricType.BURST_SIZE;
+        if (cleanName.equalsIgnoreCase(labelReloadSize) || cleanName.equalsIgnoreCase(labelChargesGained)
+                || cleanName.equalsIgnoreCase("Размер перезарядки") || cleanName.equalsIgnoreCase("Зарядов получено")) {
+            return MetricType.RELOAD_SIZE;
+        }
 
-        // 2. Multilingual dictionary match (English, Russian, Chinese, German, Spanish, French)
-        if (matchesAny(lower, "ordnance points", "очки оснащения", "装配点", "ausstattungspunkte", "puntos de equipo", "points d'armement")) {
-            return MetricType.ORDNANCE_POINTS;
+        // 2. Multilingual dictionary match:
+        // A. FLUX / DAMAGE (must be checked BEFORE generic damage or generic flux)
+        if (lower.contains("flux / dam") || lower.contains("flux/dam")
+                || lower.contains("flux / non-emp") || lower.contains("flux/non-emp")
+                || lower.contains("нагрузка / урон") || lower.contains("нагрузка/урон")
+                || (lower.contains("нагруз") && lower.contains("урон"))
+                || lower.contains("辐能/伤害") || lower.contains("辐能 / 伤害")
+                || lower.contains("fluss / schaden") || lower.contains("fluss/schaden")) {
+            return MetricType.FLUX_DAMAGE;
         }
-        if (matchesAny(lower, "range", "дальность", "射程", "reichweite", "alcance", "portée")) {
-            return MetricType.RANGE;
+
+        // B. Ammo & Reload metrics (differentiate Reload size from Reload time from Max Ammo)
+        if (lower.contains("charges gained") || lower.contains("reload size")
+                || lower.contains("зарядов получено") || lower.contains("размер перезарядки")
+                || lower.contains("充能恢复") || lower.contains("wiederaufladung menge")) {
+            return MetricType.RELOAD_SIZE;
         }
-        if (matchesAny(lower, "damage", "урон", "伤害", "schaden", "daño", "dégâts") && !lower.contains("second") && !lower.contains("сек") && !lower.contains("秒")) {
-            return MetricType.DAMAGE;
+        if (lower.contains("seconds / recharge") || lower.contains("seconds / reload")
+                || lower.contains("sec / reload") || lower.contains("sec/reload")
+                || lower.contains("время перезарядки") || lower.contains("сек. / перезарядка") || lower.contains("сек / перезарядка")
+                || lower.contains("восстановление заряда") || lower.contains("装填时间") || lower.contains("nachladezeit")) {
+            return MetricType.RELOAD_TIME;
         }
+        if (matchesAny(lower, "max charges", "max ammo", "charges", "ammo", "макс. боезапас", "боезапас", "заряды", "боеприпасы", "зарядов", "弹药", "充能", "munition")) {
+            return MetricType.AMMO_OR_CHARGES;
+        }
+
+        // C. Sustained metrics
         if (lower.contains("(sustained)") || lower.contains("(продолжительный)") || lower.contains("(прод)") || lower.contains("持续") || lower.contains("(dauerhaft)")) {
-            if (lower.contains("damage") || lower.contains("урон") || lower.contains("dps") || lower.contains("伤害")) {
-                return MetricType.DPS_SUSTAINED;
-            }
-            if (lower.contains("flux") || lower.contains("нагруз") || lower.contains("辐能")) {
+            if (lower.contains("flux") || lower.contains("нагруз") || lower.contains("fluss") || lower.contains("辐能")) {
                 return MetricType.FLUX_SUSTAINED;
             }
+            return MetricType.DPS_SUSTAINED;
         }
+
+        // D. Burst DPS & Flux
         if (matchesAny(lower, "damage / second", "damage/sec", "урон / секунду", "урон / сек", "урон/сек", "每秒伤害", "schaden / sekunde", "dps")) {
             return MetricType.DPS_BURST;
         }
         if (matchesAny(lower, "flux / second", "flux/sec", "нагрузка / секунду", "нагрузка / сек", "нагрузка/сек", "每秒辐能", "fluss / sekunde")) {
             return MetricType.FLUX_BURST;
         }
-        if (matchesAny(lower, "flux / shot", "flux/shot", "нагрузка / выстрел", "单发辐能", "fluss / schuss")) {
+        if (matchesAny(lower, "flux / shot", "flux/shot", "нагрузка / выстрел", "нагрузка/выстрел", "单发辐能", "fluss / schuss")) {
             return MetricType.FLUX_SHOT;
         }
-        if (lower.contains("flux /") || lower.contains("flux/") || lower.contains("нагрузка /") || lower.contains("нагрузка/") || lower.contains("辐能/")) {
-            if (lower.contains("dam") || lower.contains("урон") || lower.contains("伤害")) {
-                return MetricType.FLUX_DAMAGE;
-            }
+
+        // E. Ordnance points & Range
+        if (matchesAny(lower, "ordnance points", "очки оснащения", "装配点", "ausstattungspunkte", "puntos de equipo", "points d'armement")) {
+            return MetricType.ORDNANCE_POINTS;
         }
+        if (matchesAny(lower, "range", "дальность", "射程", "reichweite", "alcance", "portée")) {
+            return MetricType.RANGE;
+        }
+
+        // F. Damage (only matches if not flux/damage or dps!)
+        if (matchesAny(lower, "damage", "урон", "伤害", "schaden", "daño", "dégâts") && !lower.contains("second") && !lower.contains("сек") && !lower.contains("秒")) {
+            return MetricType.DAMAGE;
+        }
+
+        // G. Hitpoints & Refire delay
         if (matchesAny(lower, "hitpoints", "hull", "прочность", "структура", "耐久", "trefferpunkte", "puntos de vida")) {
             return MetricType.HITPOINTS;
-        }
-        if (matchesAny(lower, "max charges", "max ammo", "charges", "ammo", "макс. боезапас", "заряды", "боеприпасы", "зарядов", "弹药", "充能", "munition")) {
-            return MetricType.AMMO_OR_CHARGES;
-        }
-        if (lower.contains("recharge") || lower.contains("reload") || lower.contains("перезарядка") || lower.contains("восстановление") || lower.contains("装填") || lower.contains("nachladen")) {
-            return MetricType.RELOAD_TIME;
         }
         if (lower.contains("refire") || lower.contains("задержка между очередями") || lower.contains("задержка выстрела") || lower.contains("连发间隔") || lower.contains("feuerpause")) {
             return MetricType.REFIRE_DELAY;
