@@ -2,7 +2,7 @@
     "id": "trueweaponstats",
     "name": "True Weapon Stats",
     "author": "keltuze (original utility logic by qcwxezda)",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Displays live calculated weapon stats (range, damage, DPS, flux, ammo) in the refit screen factoring in ship hullmods, officer skills, and built-in systems. Enhanced standalone evolution of Unthemed Weapons Utilities (by qcwxezda), updated for 0.98a with dynamic multilingual support and interactive [ALT] toggle. Licensed under CC BY-NC-SA 4.0.",
     "gameVersion": "0.98a-RC8",
     "utility": true,
